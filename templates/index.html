@@ -1,0 +1,823 @@
+{% extends 'base.html' %}
+
+{% block title %}Crypto AI Agent - Dashboard{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0"><i class="fas fa-tachometer-alt me-2"></i>Trading Overview</h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <div class="card bg-primary text-white h-100">
+                            <div class="card-body">
+                                <h5 class="card-title">Active Pairs</h5>
+                                <h2 class="display-4">{{ active_pairs }}</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card bg-success text-white h-100">
+                            <div class="card-body">
+                                <h5 class="card-title">Open Trades</h5>
+                                <h2 class="display-4">{{ open_trades }}</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card bg-info text-white h-100">
+                            <div class="card-body">
+                                <h5 class="card-title">AI Actions (24h)</h5>
+                                <h2 class="display-4" id="ai-actions-count">-</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card bg-warning text-white h-100">
+                            <div class="card-body">
+                                <h5 class="card-title">Detected Issues</h5>
+                                <h2 class="display-4" id="detected-issues">-</h2>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="mb-0"><i class="fas fa-robot me-2"></i>AI Agent Actions</h4>
+                <a href="{{ url_for('main.action_log') }}" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Action Type</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for action in recent_actions %}
+                            <tr>
+                                <td>{{ action.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                <td>
+                                    {% if 'market_analysis' in action.action_type %}
+                                    <span class="badge bg-info">Market Analysis</span>
+                                    {% elif 'parameter_optimization' in action.action_type %}
+                                    <span class="badge bg-success">Parameter Optimization</span>
+                                    {% elif 'trader_monitoring' in action.action_type %}
+                                    <span class="badge bg-warning">Trader Monitoring</span>
+                                    {% elif 'trade_placement' in action.action_type %}
+                                    <span class="badge bg-primary">Trade Placement</span>
+                                    {% elif 'chat_query' in action.action_type %}
+                                    <span class="badge bg-secondary">Chat Query</span>
+                                    {% else %}
+                                    <span class="badge bg-dark">{{ action.action_type }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ action.description }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="3" class="text-center">No recent actions</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h4 class="mb-0"><i class="fas fa-question-circle me-2"></i>Ask AI Agent</h4>
+            </div>
+            <div class="card-body">
+                <form id="quick-query-form">
+                    <div class="mb-3">
+                        <label for="quick-query" class="form-label">Quick Query</label>
+                        <input type="text" class="form-control" id="quick-query" placeholder="Ask a question...">
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Ask</button>
+                </form>
+                <div class="mt-3" id="quick-query-result">
+                    <div class="alert alert-secondary">
+                        Ask me about market conditions, trader status, or recommendations.
+                    </div>
+                </div>
+                <div class="text-center mt-3">
+                    <a href="{{ url_for('main.chat_interface') }}" class="btn btn-outline-secondary">Full Chat Interface</a>
+                </div>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0"><i class="fas fa-chart-line me-2"></i>Market Summary</h4>
+            </div>
+            <div class="card-body">
+                <div id="market-summary-loading" class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Loading market data...</p>
+                </div>
+                <div id="market-summary-content" style="display: none;">
+                    <canvas id="market-trends-chart" height="200"></canvas>
+                    <div class="mt-3" id="market-recommendations">
+                        <!-- Market recommendations will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="mb-0"><i class="fas fa-list me-2"></i>Trading Pairs</h4>
+                <button id="check-inactive-traders-btn" class="btn btn-sm btn-outline-warning">Check Inactive Traders</button>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Pair Name</th>
+                                <th>Base/Quote</th>
+                                <th>Open Trades</th>
+                                <th>Max Trades</th>
+                                <th>Last Trade</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for pair in trading_pairs %}
+                            {% set trader = None %}
+                            {% for t in traders_status %}
+                                {% if t.pair_id == pair.id %}
+                                    {% set trader = t %}
+                                {% endif %}
+                            {% endfor %}
+                            <tr>
+                                <td>{{ pair.pair_name }}</td>
+                                <td>{{ pair.base_currency }}/{{ pair.quote_currency }}</td>
+                                <td>
+                                    {% if trader %}
+                                        {{ trader.open_trades }} / {{ pair.max_concurrent_trades }}
+                                    {% else %}
+                                        0 / {{ pair.max_concurrent_trades }}
+                                    {% endif %}
+                                </td>
+                                <td>{{ pair.max_concurrent_trades }}</td>
+                                <td>
+                                    {% if trader and trader.last_trade_time %}
+                                        {{ trader.last_trade_time|replace('T', ' ')|replace('Z', '') }}
+                                    {% else %}
+                                        Never
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if not pair.active %}
+                                        <span class="badge bg-secondary">Inactive</span>
+                                    {% elif trader and trader.open_trades >= pair.max_concurrent_trades %}
+                                        <span class="badge bg-warning">Full</span>
+                                    {% elif trader and trader.last_trade_time %}
+                                        <span class="badge bg-success">Active</span>
+                                    {% else %}
+                                        <span class="badge bg-info">Ready</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('main.trader_detail', pair_id=pair.id) }}" class="btn btn-sm btn-primary">Details</a>
+                                    <button class="btn btn-sm btn-success analyze-market-btn" data-pair="{{ pair.pair_name }}">Analyze</button>
+                                    <button class="btn btn-sm btn-info optimize-trader-btn" data-pair-id="{{ pair.id }}">Optimize</button>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="7" class="text-center">No trading pairs available</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modals -->
+<div class="modal fade" id="marketAnalysisModal" tabindex="-1" aria-labelledby="marketAnalysisModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="marketAnalysisModalLabel">Market Analysis</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="marketAnalysisModalBody">
+                <div class="text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Analyzing market conditions...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="optimizeTraderModal" tabindex="-1" aria-labelledby="optimizeTraderModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="optimizeTraderModalLabel">Optimize Trader Parameters</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="optimizeTraderModalBody">
+                <div class="text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Optimizing trader parameters...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="inactiveTraderModal" tabindex="-1" aria-labelledby="inactiveTraderModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="inactiveTraderModalLabel">Inactive Traders</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="inactiveTraderModalBody">
+                <div class="text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Checking for inactive traders...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Quick query handler
+    document.getElementById('quick-query-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const query = document.getElementById('quick-query').value;
+        
+        if (!query.trim()) return;
+        
+        const resultDiv = document.getElementById('quick-query-result');
+        resultDiv.innerHTML = `
+            <div class="alert alert-info">
+                <div class="spinner-border spinner-border-sm" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                Processing your query...
+            </div>
+        `;
+        
+        fetch('/api/chat/query', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ query: query }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                resultDiv.innerHTML = `<div class="alert alert-success">${data.response}</div>`;
+            } else {
+                resultDiv.innerHTML = `<div class="alert alert-danger">Error: ${data.error}</div>`;
+            }
+        })
+        .catch(error => {
+            resultDiv.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
+        });
+    });
+
+    // Load market summary on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        loadMarketSummary();
+        loadDashboardStats();
+        
+        // Setup event listeners for buttons
+        setupAnalyzeMarketButtons();
+        setupOptimizeTraderButtons();
+        setupInactiveTraderCheck();
+    });
+    
+    function loadMarketSummary() {
+        // First get all trading pairs
+        fetch('/api/trader/monitor/all')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('market-summary-loading').style.display = 'none';
+                document.getElementById('market-summary-content').style.display = 'block';
+                
+                if (data.success) {
+                    // Prepare data for chart
+                    const tradersWithIssues = data.results.filter(t => t.issues_detected);
+                    const healthyTraders = data.results.filter(t => !t.issues_detected);
+                    
+                    // Create chart
+                    createMarketStatusChart(healthyTraders.length, tradersWithIssues.length);
+                    
+                    // Update recommendations
+                    const recEl = document.getElementById('market-recommendations');
+                    
+                    if (tradersWithIssues.length > 0) {
+                        recEl.innerHTML = `
+                            <div class="alert alert-warning">
+                                <h5><i class="fas fa-exclamation-triangle me-2"></i>Issues Detected</h5>
+                                <p>${tradersWithIssues.length} traders have issues that require attention.</p>
+                                <a href="{{ url_for('main.action_log') }}" class="btn btn-sm btn-warning">View Details</a>
+                            </div>
+                        `;
+                    } else {
+                        recEl.innerHTML = `
+                            <div class="alert alert-success">
+                                <h5><i class="fas fa-check-circle me-2"></i>All Systems Normal</h5>
+                                <p>No issues detected with any traders.</p>
+                            </div>
+                        `;
+                    }
+                } else {
+                    document.getElementById('market-summary-content').innerHTML = `
+                        <div class="alert alert-danger">
+                            Error loading market data: ${data.error}
+                        </div>
+                    `;
+                }
+            })
+            .catch(error => {
+                document.getElementById('market-summary-loading').style.display = 'none';
+                document.getElementById('market-summary-content').style.display = 'block';
+                document.getElementById('market-summary-content').innerHTML = `
+                    <div class="alert alert-danger">
+                        Error loading market data: ${error.message}
+                    </div>
+                `;
+            });
+    }
+    
+    function createMarketStatusChart(healthy, issues) {
+        const ctx = document.getElementById('market-trends-chart').getContext('2d');
+        
+        new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: ['Healthy', 'Issues Detected'],
+                datasets: [{
+                    data: [healthy, issues],
+                    backgroundColor: ['rgba(40, 167, 69, 0.8)', 'rgba(255, 193, 7, 0.8)'],
+                    borderColor: ['rgb(40, 167, 69)', 'rgb(255, 193, 7)'],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                    },
+                    title: {
+                        display: true,
+                        text: 'Trader Health Status'
+                    }
+                }
+            }
+        });
+    }
+    
+    function loadDashboardStats() {
+        // Load AI action count
+        fetch('/api/actions/recent?limit=100')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Count actions in the last 24 hours
+                    const now = new Date();
+                    const yesterday = new Date(now.getTime() - (24 * 60 * 60 * 1000));
+                    const recentActions = data.actions.filter(action => {
+                        const actionDate = new Date(action.timestamp);
+                        return actionDate >= yesterday;
+                    });
+                    
+                    document.getElementById('ai-actions-count').textContent = recentActions.length;
+                }
+            })
+            .catch(error => {
+                console.error('Error loading action stats:', error);
+            });
+            
+        // Load issues count
+        fetch('/api/trader/monitor/all')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('detected-issues').textContent = data.traders_with_issues;
+                }
+            })
+            .catch(error => {
+                console.error('Error loading issues stats:', error);
+            });
+    }
+    
+    function setupAnalyzeMarketButtons() {
+        const buttons = document.querySelectorAll('.analyze-market-btn');
+        buttons.forEach(button => {
+            button.addEventListener('click', function() {
+                const pair = this.getAttribute('data-pair');
+                const modal = new bootstrap.Modal(document.getElementById('marketAnalysisModal'));
+                
+                // Update modal title
+                document.getElementById('marketAnalysisModalLabel').textContent = `Market Analysis: ${pair}`;
+                
+                // Show the modal and loading indicator
+                modal.show();
+                
+                // Make API request
+                fetch(`/api/market/analyze?symbol=${pair}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            const modalBody = document.getElementById('marketAnalysisModalBody');
+                            
+                            // Format the analysis into HTML
+                            let html = `
+                                <div class="card mb-3">
+                                    <div class="card-header ${data.trading_recommended ? 'bg-success' : 'bg-warning'} text-white">
+                                        <h5 class="mb-0">
+                                            ${data.trading_recommended ? 
+                                                '<i class="fas fa-check-circle me-2"></i>Trading Recommended' : 
+                                                '<i class="fas fa-exclamation-triangle me-2"></i>Trading Not Recommended'}
+                                        </h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <h5>Market Metrics</h5>
+                                                <ul class="list-group">
+                                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                        Current Price
+                                                        <span class="badge bg-primary rounded-pill">${data.current_price}</span>
+                                                    </li>
+                                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                        24h Volume
+                                                        <span class="badge bg-primary rounded-pill">${data.volume_24h}</span>
+                                                    </li>
+                                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                        Price Change (24h)
+                                                        <span class="badge ${data.price_change_24h >= 0 ? 'bg-success' : 'bg-danger'} rounded-pill">
+                                                            ${data.price_change_24h.toFixed(2)}%
+                                                        </span>
+                                                    </li>
+                                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                        Volatility
+                                                        <span class="badge ${data.volatility < 15 ? 'bg-success' : data.volatility < 25 ? 'bg-warning' : 'bg-danger'} rounded-pill">
+                                                            ${data.volatility.toFixed(2)}%
+                                                        </span>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <h5>Technical Indicators</h5>
+                                                <ul class="list-group">
+                                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                        Trend Direction
+                                                        <span class="badge ${data.trend.direction === 'up' ? 'bg-success' : data.trend.direction === 'down' ? 'bg-danger' : 'bg-secondary'} rounded-pill">
+                                                            ${data.trend.direction.toUpperCase()}
+                                                        </span>
+                                                    </li>
+                                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                        Trend Strength
+                                                        <span class="badge bg-info rounded-pill">${(data.trend.strength * 100).toFixed(0)}%</span>
+                                                    </li>
+                                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                        RSI
+                                                        <span class="badge ${data.rsi > 70 ? 'bg-danger' : data.rsi < 30 ? 'bg-success' : 'bg-secondary'} rounded-pill">
+                                                            ${data.rsi ? data.rsi.toFixed(2) : 'N/A'}
+                                                        </span>
+                                                    </li>
+                                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                        MACD Histogram
+                                                        <span class="badge ${data.macd.histogram > 0 ? 'bg-success' : 'bg-danger'} rounded-pill">
+                                                            ${data.macd.histogram ? data.macd.histogram.toFixed(4) : 'N/A'}
+                                                        </span>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                        <div class="mt-3">
+                                            <h5>Analysis</h5>
+                                            <div class="alert alert-secondary">
+                                                ${data.reasoning || 'No detailed analysis available.'}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                            
+                            modalBody.innerHTML = html;
+                        } else {
+                            document.getElementById('marketAnalysisModalBody').innerHTML = `
+                                <div class="alert alert-danger">
+                                    Error analyzing market: ${data.error}
+                                </div>
+                            `;
+                        }
+                    })
+                    .catch(error => {
+                        document.getElementById('marketAnalysisModalBody').innerHTML = `
+                            <div class="alert alert-danger">
+                                Error: ${error.message}
+                            </div>
+                        `;
+                    });
+            });
+        });
+    }
+    
+    function setupOptimizeTraderButtons() {
+        const buttons = document.querySelectorAll('.optimize-trader-btn');
+        buttons.forEach(button => {
+            button.addEventListener('click', function() {
+                const pairId = this.getAttribute('data-pair-id');
+                const modal = new bootstrap.Modal(document.getElementById('optimizeTraderModal'));
+                
+                // Show the modal and loading indicator
+                modal.show();
+                
+                // Make API request
+                fetch(`/api/trader/optimize/${pairId}`, {
+                    method: 'POST',
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        const modalBody = document.getElementById('optimizeTraderModalBody');
+                        
+                        if (data.success) {
+                            // Format the result into HTML
+                            let html = `
+                                <div class="alert alert-success">
+                                    <h5><i class="fas fa-check-circle me-2"></i>Optimization Successful</h5>
+                                    <p>Parameters have been optimized using ${data.optimization_type} approach.</p>
+                                </div>
+                                
+                                <div class="card mb-3">
+                                    <div class="card-header">
+                                        <h5 class="mb-0">Parameter Changes</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <h6>Previous Configuration</h6>
+                                                <ul class="list-group">
+                                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                        Profit Margin
+                                                        <span class="badge bg-secondary rounded-pill">${data.previous_config.profit_margin}%</span>
+                                                    </li>
+                                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                        Trade Size
+                                                        <span class="badge bg-secondary rounded-pill">${data.previous_config.trade_size}</span>
+                                                    </li>
+                                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                        Max Open Time
+                                                        <span class="badge bg-secondary rounded-pill">${data.previous_config.max_open_time} hours</span>
+                                                    </li>
+                                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                        Stop Loss
+                                                        <span class="badge bg-secondary rounded-pill">${data.previous_config.stop_loss ? data.previous_config.stop_loss + '%' : 'None'}</span>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <h6>New Configuration</h6>
+                                                <ul class="list-group">
+                                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                        Profit Margin
+                                                        <span class="badge ${data.new_config.profit_margin > data.previous_config.profit_margin ? 'bg-success' : data.new_config.profit_margin < data.previous_config.profit_margin ? 'bg-danger' : 'bg-secondary'} rounded-pill">
+                                                            ${data.new_config.profit_margin}%
+                                                        </span>
+                                                    </li>
+                                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                        Trade Size
+                                                        <span class="badge ${data.new_config.trade_size > data.previous_config.trade_size ? 'bg-success' : data.new_config.trade_size < data.previous_config.trade_size ? 'bg-danger' : 'bg-secondary'} rounded-pill">
+                                                            ${data.new_config.trade_size}
+                                                        </span>
+                                                    </li>
+                                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                        Max Open Time
+                                                        <span class="badge ${data.new_config.max_open_time > data.previous_config.max_open_time ? 'bg-success' : data.new_config.max_open_time < data.previous_config.max_open_time ? 'bg-danger' : 'bg-secondary'} rounded-pill">
+                                                            ${data.new_config.max_open_time} hours
+                                                        </span>
+                                                    </li>
+                                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                        Stop Loss
+                                                        <span class="badge ${data.new_config.stop_loss && !data.previous_config.stop_loss ? 'bg-success' : !data.new_config.stop_loss && data.previous_config.stop_loss ? 'bg-danger' : 'bg-secondary'} rounded-pill">
+                                                            ${data.new_config.stop_loss ? data.new_config.stop_loss + '%' : 'None'}
+                                                        </span>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="mt-3">
+                                            <h5>Reasoning</h5>
+                                            <div class="alert alert-secondary">
+                                                ${data.reasoning || 'No reasoning provided.'}
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="mt-3">
+                                            <h5>Expected Improvement</h5>
+                                            <div class="alert alert-info">
+                                                ${data.expected_improvement || 'No improvement details provided.'}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                            
+                            modalBody.innerHTML = html;
+                        } else {
+                            modalBody.innerHTML = `
+                                <div class="alert alert-danger">
+                                    <h5><i class="fas fa-exclamation-circle me-2"></i>Optimization Failed</h5>
+                                    <p>Error: ${data.error}</p>
+                                </div>
+                            `;
+                        }
+                    })
+                    .catch(error => {
+                        document.getElementById('optimizeTraderModalBody').innerHTML = `
+                            <div class="alert alert-danger">
+                                <h5><i class="fas fa-exclamation-circle me-2"></i>Optimization Failed</h5>
+                                <p>Error: ${error.message}</p>
+                            </div>
+                        `;
+                    });
+            });
+        });
+    }
+    
+    function setupInactiveTraderCheck() {
+        document.getElementById('check-inactive-traders-btn').addEventListener('click', function() {
+            const modal = new bootstrap.Modal(document.getElementById('inactiveTraderModal'));
+            
+            // Show the modal and loading indicator
+            modal.show();
+            
+            // Make API request
+            fetch('/api/trader/inactive')
+                .then(response => response.json())
+                .then(data => {
+                    const modalBody = document.getElementById('inactiveTraderModalBody');
+                    
+                    if (data.success) {
+                        if (data.inactive_traders_count > 0) {
+                            let html = `
+                                <div class="alert alert-warning">
+                                    <h5><i class="fas fa-clock me-2"></i>Inactive Traders Detected</h5>
+                                    <p>Found ${data.inactive_traders_count} inactive traders that haven't placed trades in at least ${data.inactivity_threshold_hours} hours.</p>
+                                </div>
+                                
+                                <div class="table-responsive">
+                                    <table class="table table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>Pair</th>
+                                                <th>Inactivity Duration</th>
+                                                <th>Open Trades</th>
+                                                <th>Market Trend</th>
+                                                <th>Recommendation</th>
+                                                <th>Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                            `;
+                            
+                            data.inactive_traders.forEach(trader => {
+                                html += `
+                                    <tr>
+                                        <td>${trader.pair_name}</td>
+                                        <td>${trader.inactivity_duration}</td>
+                                        <td>${trader.current_open_trades} / ${trader.max_concurrent_trades}</td>
+                                        <td>
+                                            <span class="badge ${trader.market_conditions.trend === 'up' ? 'bg-success' : trader.market_conditions.trend === 'down' ? 'bg-danger' : 'bg-secondary'}">
+                                                ${trader.market_conditions.trend.toUpperCase()}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            ${trader.recommendation === 'place_trade' ? 
+                                                '<span class="badge bg-success">Place Trade</span>' : 
+                                                '<span class="badge bg-warning">Wait</span>'}
+                                        </td>
+                                        <td>
+                                            ${trader.recommendation === 'place_trade' ? 
+                                                `<button class="btn btn-sm btn-success place-trade-btn" data-pair-id="${trader.pair_id}">Place Trade</button>` : 
+                                                '<button class="btn btn-sm btn-secondary" disabled>Not Recommended</button>'}
+                                        </td>
+                                    </tr>
+                                `;
+                            });
+                            
+                            html += `
+                                        </tbody>
+                                    </table>
+                                </div>
+                            `;
+                            
+                            modalBody.innerHTML = html;
+                            
+                            // Add event listeners to place trade buttons
+                            const placeTradeButtons = modalBody.querySelectorAll('.place-trade-btn');
+                            placeTradeButtons.forEach(button => {
+                                button.addEventListener('click', function() {
+                                    const pairId = this.getAttribute('data-pair-id');
+                                    this.disabled = true;
+                                    this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Placing...';
+                                    
+                                    fetch(`/api/trader/place-trade/${pairId}`, {
+                                        method: 'POST',
+                                    })
+                                        .then(response => response.json())
+                                        .then(result => {
+                                            if (result.success) {
+                                                this.className = 'btn btn-sm btn-outline-success';
+                                                this.innerHTML = '<i class="fas fa-check"></i> Trade Placed';
+                                            } else {
+                                                this.className = 'btn btn-sm btn-danger';
+                                                this.innerHTML = '<i class="fas fa-times"></i> Failed';
+                                                this.title = result.error;
+                                            }
+                                        })
+                                        .catch(error => {
+                                            this.className = 'btn btn-sm btn-danger';
+                                            this.innerHTML = '<i class="fas fa-times"></i> Error';
+                                            this.title = error.message;
+                                        });
+                                });
+                            });
+                            
+                        } else {
+                            modalBody.innerHTML = `
+                                <div class="alert alert-success">
+                                    <h5><i class="fas fa-check-circle me-2"></i>No Inactive Traders</h5>
+                                    <p>All traders have been active within the last ${data.inactivity_threshold_hours} hours.</p>
+                                </div>
+                            `;
+                        }
+                    } else {
+                        modalBody.innerHTML = `
+                            <div class="alert alert-danger">
+                                <h5><i class="fas fa-exclamation-circle me-2"></i>Error Checking Inactive Traders</h5>
+                                <p>Error: ${data.error}</p>
+                            </div>
+                        `;
+                    }
+                })
+                .catch(error => {
+                    document.getElementById('inactiveTraderModalBody').innerHTML = `
+                        <div class="alert alert-danger">
+                            <h5><i class="fas fa-exclamation-circle me-2"></i>Error Checking Inactive Traders</h5>
+                            <p>Error: ${error.message}</p>
+                        </div>
+                    `;
+                });
+        });
+    }
+</script>
+{% endblock %}

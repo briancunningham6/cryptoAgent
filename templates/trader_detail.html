@@ -1,0 +1,1172 @@
+{% extends 'base.html' %}
+
+{% block title %}Crypto AI Agent - Trader Details ({{ pair.pair_name }}){% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">
+                    <i class="fas fa-exchange-alt me-2"></i>Trader Details: {{ pair.pair_name }}
+                </h4>
+                <a href="{{ url_for('main.index') }}" class="btn btn-sm btn-outline-primary">
+                    <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="card h-100">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="mb-0">Trading Pair Info</h5>
+                            </div>
+                            <div class="card-body">
+                                <ul class="list-group">
+                                    <li class="list-group-item d-flex justify-content-between">
+                                        <span>Base Currency</span>
+                                        <span class="badge bg-info">{{ pair.base_currency }}</span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between">
+                                        <span>Quote Currency</span>
+                                        <span class="badge bg-info">{{ pair.quote_currency }}</span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between">
+                                        <span>Max Concurrent Trades</span>
+                                        <span class="badge bg-primary">{{ pair.max_concurrent_trades }}</span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between">
+                                        <span>Status</span>
+                                        <span class="badge {% if pair.active %}bg-success{% else %}bg-secondary{% endif %}">
+                                            {% if pair.active %}Active{% else %}Inactive{% endif %}
+                                        </span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between">
+                                        <span>Created Date</span>
+                                        <span>{{ pair.created_at|replace('T', ' ')|replace('Z', '') }}</span>
+                                    </li>
+                                </ul>
+
+                                <div class="d-grid gap-2 mt-3">
+                                    <button id="analyze-market-btn" class="btn btn-success" data-pair="{{ pair.pair_name }}">
+                                        <i class="fas fa-chart-line me-2"></i>Analyze Market
+                                    </button>
+                                    <button id="optimize-parameters-btn" class="btn btn-primary" data-pair-id="{{ pair.id }}">
+                                        <i class="fas fa-sliders-h me-2"></i>Optimize Parameters
+                                    </button>
+                                    <button id="check-trader-btn" class="btn btn-warning" data-pair-id="{{ pair.id }}">
+                                        <i class="fas fa-stethoscope me-2"></i>Check Trader Health
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="card h-100">
+                            <div class="card-header bg-success text-white">
+                                <h5 class="mb-0">Trader Configuration</h5>
+                            </div>
+                            <div class="card-body">
+                                <ul class="list-group">
+                                    <li class="list-group-item d-flex justify-content-between">
+                                        <span>Profit Margin</span>
+                                        <span class="badge bg-success">{{ trader_config.profit_margin }}%</span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between">
+                                        <span>Trade Size</span>
+                                        <span class="badge bg-primary">{{ trader_config.trade_size }}</span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between">
+                                        <span>Max Open Time</span>
+                                        <span class="badge bg-info">{{ trader_config.max_open_time }} hours</span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between">
+                                        <span>Stop Loss</span>
+                                        <span class="badge {% if trader_config.stop_loss %}bg-danger{% else %}bg-secondary{% endif %}">
+                                            {% if trader_config.stop_loss %}{{ trader_config.stop_loss }}%{% else %}None{% endif %}
+                                        </span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between">
+                                        <span>AI Optimized</span>
+                                        <span class="badge {% if trader_config.ai_optimized %}bg-success{% else %}bg-secondary{% endif %}">
+                                            {% if trader_config.ai_optimized %}Yes{% else %}No{% endif %}
+                                        </span>
+                                    </li>
+                                    {% if trader_config.ai_optimized and trader_config.last_optimization %}
+                                    <li class="list-group-item d-flex justify-content-between">
+                                        <span>Last Optimization</span>
+                                        <span>{{ trader_config.last_optimization|replace('T', ' ')|replace('Z', '') }}</span>
+                                    </li>
+                                    {% endif %}
+                                </ul>
+
+                                {% if trader_config.optimization_reason %}
+                                <div class="alert alert-info mt-3">
+                                    <small><i class="fas fa-info-circle me-1"></i>{{ trader_config.optimization_reason }}</small>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="card h-100">
+                            <div class="card-header bg-warning text-white">
+                                <h5 class="mb-0">Current Market Conditions</h5>
+                            </div>
+                            <div class="card-body">
+                                {% if market_conditions.success %}
+                                <div class="alert {% if market_conditions.trading_recommended %}alert-success{% else %}alert-warning{% endif %} mb-3">
+                                    <i class="fas {% if market_conditions.trading_recommended %}fa-check-circle{% else %}fa-exclamation-triangle{% endif %} me-2"></i>
+                                    {% if market_conditions.trading_recommended %}Trading is currently recommended{% else %}Trading is not recommended at this time{% endif %}
+                                </div>
+
+                                <ul class="list-group">
+                                    <li class="list-group-item d-flex justify-content-between">
+                                        <span>Current Price</span>
+                                        <span class="badge bg-primary">{{ market_conditions.current_price }}</span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between">
+                                        <span>Trend Direction</span>
+                                        <span class="badge 
+                                            {% if market_conditions.trend.direction == 'up' %}bg-success
+                                            {% elif market_conditions.trend.direction == 'down' %}bg-danger
+                                            {% else %}bg-secondary{% endif %}">
+                                            {{ market_conditions.trend.direction|upper }}
+                                        </span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between">
+                                        <span>Trend Strength</span>
+                                        <span class="badge bg-info">{{ (market_conditions.trend.strength * 100)|round|int }}%</span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between">
+                                        <span>Volatility</span>
+                                        <span class="badge 
+                                            {% if market_conditions.volatility < 10 %}bg-success
+                                            {% elif market_conditions.volatility < 20 %}bg-warning
+                                            {% else %}bg-danger{% endif %}">
+                                            {{ market_conditions.volatility|round(2) }}%
+                                        </span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between">
+                                        <span>RSI</span>
+                                        <span class="badge 
+                                            {% if market_conditions.rsi > 70 %}bg-danger
+                                            {% elif market_conditions.rsi < 30 %}bg-success
+                                            {% else %}bg-secondary{% endif %}">
+                                            {{ market_conditions.rsi|round(2) if market_conditions.rsi else 'N/A' }}
+                                        </span>
+                                    </li>
+                                </ul>
+
+                                <div class="mt-3">
+                                    <small><strong>Analysis:</strong> {{ market_conditions.reasoning }}</small>
+                                </div>
+                                {% else %}
+                                <div class="alert alert-danger">
+                                    <i class="fas fa-exclamation-circle me-2"></i>Error loading market conditions:
+                                    <p>{{ market_conditions.error }}</p>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="mb-0"><i class="fas fa-exchange-alt me-2"></i>Trades</h4>
+                <button id="place-trade-btn" class="btn btn-sm btn-success" data-pair-id="{{ pair.id }}">
+                    <i class="fas fa-plus me-1"></i>Place Trade
+                </button>
+            </div>
+            <div class="card-body">
+                <ul class="nav nav-tabs mb-3" id="tradesTab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="open-trades-tab" data-bs-toggle="tab" data-bs-target="#open-trades" type="button" role="tab" aria-controls="open-trades" aria-selected="true">Open Trades</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="closed-trades-tab" data-bs-toggle="tab" data-bs-target="#closed-trades" type="button" role="tab" aria-controls="closed-trades" aria-selected="false">Closed Trades</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="cancelled-trades-tab" data-bs-toggle="tab" data-bs-target="#cancelled-trades" type="button" role="tab" aria-controls="cancelled-trades" aria-selected="false">Cancelled Trades</button>
+                    </li>
+                </ul>
+                <div class="tab-content" id="tradesTabContent">
+                    <div class="tab-pane fade show active" id="open-trades" role="tabpanel" aria-labelledby="open-trades-tab">
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Entry Price</th>
+                                        <th>Target Price</th>
+                                        <th>Size</th>
+                                        <th>Opened At</th>
+                                        <th>AI Recommended</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% set open_trades = [] %}
+                                    {% for trade in trades %}
+                                        {% if trade.status == 'open' %}
+                                            {% set _ = open_trades.append(trade) %}
+                                            <tr>
+                                                <td>{{ trade.id }}</td>
+                                                <td>{{ trade.entry_price }}</td>
+                                                <td>{{ trade.target_price }}</td>
+                                                <td>{{ trade.size }}</td>
+                                                <td>{{ trade.opened_at|replace('T', ' ')|replace('Z', '') }}</td>
+                                                <td>
+                                                    <span class="badge {% if trade.ai_recommended %}bg-success{% else %}bg-secondary{% endif %}">
+                                                        {% if trade.ai_recommended %}Yes{% else %}No{% endif %}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <button class="btn btn-sm btn-danger cancel-trade-btn" data-trade-id="{{ trade.id }}">
+                                                        <i class="fas fa-times me-1"></i>Cancel
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        {% endif %}
+                                    {% endfor %}
+                                    {% if open_trades|length == 0 %}
+                                        <tr>
+                                            <td colspan="7" class="text-center">No open trades</td>
+                                        </tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="closed-trades" role="tabpanel" aria-labelledby="closed-trades-tab">
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Entry Price</th>
+                                        <th>Target Price</th>
+                                        <th>Size</th>
+                                        <th>Profit/Loss</th>
+                                        <th>Opened At</th>
+                                        <th>Closed At</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% set closed_trades = [] %}
+                                    {% for trade in trades %}
+                                        {% if trade.status == 'closed' %}
+                                            {% set _ = closed_trades.append(trade) %}
+                                            <tr>
+                                                <td>{{ trade.id }}</td>
+                                                <td>{{ trade.entry_price }}</td>
+                                                <td>{{ trade.target_price }}</td>
+                                                <td>{{ trade.size }}</td>
+                                                <td>
+                                                    <span class="badge {% if trade.profit_loss > 0 %}bg-success{% else %}bg-danger{% endif %}">
+                                                        {{ trade.profit_loss|round(2) }}%
+                                                    </span>
+                                                </td>
+                                                <td>{{ trade.opened_at|replace('T', ' ')|replace('Z', '') }}</td>
+                                                <td>{{ trade.closed_at|replace('T', ' ')|replace('Z', '') }}</td>
+                                            </tr>
+                                        {% endif %}
+                                    {% endfor %}
+                                    {% if closed_trades|length == 0 %}
+                                        <tr>
+                                            <td colspan="7" class="text-center">No closed trades</td>
+                                        </tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="cancelled-trades" role="tabpanel" aria-labelledby="cancelled-trades-tab">
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Entry Price</th>
+                                        <th>Target Price</th>
+                                        <th>Size</th>
+                                        <th>Opened At</th>
+                                        <th>Cancelled At</th>
+                                        <th>AI Recommended</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% set cancelled_trades = [] %}
+                                    {% for trade in trades %}
+                                        {% if trade.status == 'cancelled' %}
+                                            {% set _ = cancelled_trades.append(trade) %}
+                                            <tr>
+                                                <td>{{ trade.id }}</td>
+                                                <td>{{ trade.entry_price }}</td>
+                                                <td>{{ trade.target_price }}</td>
+                                                <td>{{ trade.size }}</td>
+                                                <td>{{ trade.opened_at|replace('T', ' ')|replace('Z', '') }}</td>
+                                                <td>{{ trade.closed_at|replace('T', ' ')|replace('Z', '') }}</td>
+                                                <td>
+                                                    <span class="badge {% if trade.ai_recommended %}bg-success{% else %}bg-secondary{% endif %}">
+                                                        {% if trade.ai_recommended %}Yes{% else %}No{% endif %}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        {% endif %}
+                                    {% endfor %}
+                                    {% if cancelled_trades|length == 0 %}
+                                        <tr>
+                                            <td colspan="7" class="text-center">No cancelled trades</td>
+                                        </tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h4 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Performance</h4>
+            </div>
+            <div class="card-body">
+                <canvas id="trade-performance-chart" height="200"></canvas>
+                <hr>
+                <div class="row text-center mt-3">
+                    <div class="col-4">
+                        <h6>Success Rate</h6>
+                        <div class="h4" id="success-rate">-</div>
+                    </div>
+                    <div class="col-4">
+                        <h6>Avg. Profit</h6>
+                        <div class="h4" id="avg-profit">-</div>
+                    </div>
+                    <div class="col-4">
+                        <h6>Total P/L</h6>
+                        <div class="h4" id="total-pl">-</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0"><i class="fas fa-history me-2"></i>Recent AI Actions</h4>
+            </div>
+            <div class="card-body">
+                <div class="list-group">
+                    {% for action in pair_actions %}
+                    <div class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">
+                                {% if 'market_analysis' in action.action_type %}
+                                <i class="fas fa-chart-line text-info me-2"></i>
+                                {% elif 'parameter_optimization' in action.action_type %}
+                                <i class="fas fa-sliders-h text-success me-2"></i>
+                                {% elif 'trader_monitoring' in action.action_type %}
+                                <i class="fas fa-stethoscope text-warning me-2"></i>
+                                {% elif 'trade_placement' in action.action_type %}
+                                <i class="fas fa-plus-circle text-primary me-2"></i>
+                                {% else %}
+                                <i class="fas fa-robot text-secondary me-2"></i>
+                                {% endif %}
+                                {{ action.action_type }}
+                            </h6>
+                            <small>{{ action.timestamp.strftime('%Y-%m-%d %H:%M') }}</small>
+                        </div>
+                        <p class="mb-1">{{ action.description }}</p>
+                    </div>
+                    {% else %}
+                    <div class="list-group-item">
+                        <p class="mb-0 text-center">No recent AI actions for this trader</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modals -->
+<div class="modal fade" id="marketAnalysisModal" tabindex="-1" aria-labelledby="marketAnalysisModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="marketAnalysisModalLabel">Market Analysis: {{ pair.pair_name }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="marketAnalysisModalBody">
+                <div class="text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Analyzing market conditions...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="optimizeParametersModal" tabindex="-1" aria-labelledby="optimizeParametersModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="optimizeParametersModalLabel">Optimize Parameters: {{ pair.pair_name }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="optimizeParametersModalBody">
+                <div class="text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Optimizing trading parameters...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="checkTraderModal" tabindex="-1" aria-labelledby="checkTraderModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="checkTraderModalLabel">Trader Health Check: {{ pair.pair_name }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="checkTraderModalBody">
+                <div class="text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Checking trader health and detecting issues...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="placeTradeModal" tabindex="-1" aria-labelledby="placeTradeModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="placeTradeModalLabel">Place Trade: {{ pair.pair_name }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="placeTradeAlert" class="alert alert-warning">
+                    <i class="fas fa-robot me-2"></i>AI Agent is analyzing market conditions...
+                </div>
+                <div id="marketConditionsInfo" style="display: none;"></div>
+                <div id="placeTradeBtns" class="mt-3 text-center" style="display: none;">
+                    <button id="confirmPlaceTrade" class="btn btn-success">
+                        <i class="fas fa-check me-1"></i>Confirm Trade Placement
+                    </button>
+                </div>
+                <div id="placingTradeInfo" class="text-center mt-3" style="display: none;">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Placing trade...</p>
+                </div>
+                <div id="placeTradeResult" class="mt-3" style="display: none;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Calculate performance metrics when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        calculatePerformanceMetrics();
+        setupEventListeners();
+    });
+    
+    function calculatePerformanceMetrics() {
+        // Get trades from the page
+        const trades = {{ trades|tojson }};
+        
+        // Filter to closed trades only
+        const closedTrades = trades.filter(t => t.status === 'closed');
+        
+        if (closedTrades.length === 0) {
+            document.getElementById('success-rate').innerText = 'N/A';
+            document.getElementById('avg-profit').innerText = 'N/A';
+            document.getElementById('total-pl').innerText = 'N/A';
+            return;
+        }
+        
+        // Calculate metrics
+        const successfulTrades = closedTrades.filter(t => t.profit_loss > 0);
+        const successRate = (successfulTrades.length / closedTrades.length) * 100;
+        
+        const profitLosses = closedTrades.map(t => t.profit_loss);
+        const avgProfit = profitLosses.reduce((a, b) => a + b, 0) / closedTrades.length;
+        const totalPL = profitLosses.reduce((a, b) => a + b, 0);
+        
+        // Update the page
+        document.getElementById('success-rate').innerText = `${successRate.toFixed(1)}%`;
+        document.getElementById('avg-profit').innerText = `${avgProfit.toFixed(2)}%`;
+        document.getElementById('total-pl').innerText = `${totalPL > 0 ? '+' : ''}${totalPL.toFixed(2)}%`;
+        
+        // Create chart
+        createTradePerformanceChart(closedTrades);
+    }
+    
+    function createTradePerformanceChart(trades) {
+        // Sort trades by date
+        trades.sort((a, b) => new Date(a.closed_at) - new Date(b.closed_at));
+        
+        // Prepare data
+        const labels = trades.map(t => t.closed_at.substring(0, 10));
+        const data = trades.map(t => t.profit_loss);
+        
+        // Calculate cumulative profit/loss
+        let cumulativePL = 0;
+        const cumulativeData = data.map(pl => {
+            cumulativePL += pl;
+            return cumulativePL;
+        });
+        
+        // Create chart
+        const ctx = document.getElementById('trade-performance-chart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Individual Trade P/L (%)',
+                    data: data,
+                    backgroundColor: data.map(pl => pl >= 0 ? 'rgba(40, 167, 69, 0.2)' : 'rgba(220, 53, 69, 0.2)'),
+                    borderColor: data.map(pl => pl >= 0 ? 'rgb(40, 167, 69)' : 'rgb(220, 53, 69)'),
+                    borderWidth: 1,
+                    type: 'bar'
+                }, {
+                    label: 'Cumulative P/L (%)',
+                    data: cumulativeData,
+                    borderColor: 'rgb(0, 123, 255)',
+                    backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    type: 'line'
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: false
+                    }
+                }
+            }
+        });
+    }
+    
+    function setupEventListeners() {
+        // Market analysis button
+        document.getElementById('analyze-market-btn').addEventListener('click', function() {
+            const pair = this.getAttribute('data-pair');
+            const modal = new bootstrap.Modal(document.getElementById('marketAnalysisModal'));
+            modal.show();
+            
+            // Make API request
+            fetch(`/api/market/analyze?symbol=${pair}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const modalBody = document.getElementById('marketAnalysisModalBody');
+                        
+                        // Format the analysis into HTML
+                        let html = `
+                            <div class="card mb-3">
+                                <div class="card-header ${data.trading_recommended ? 'bg-success' : 'bg-warning'} text-white">
+                                    <h5 class="mb-0">
+                                        ${data.trading_recommended ? 
+                                            '<i class="fas fa-check-circle me-2"></i>Trading Recommended' : 
+                                            '<i class="fas fa-exclamation-triangle me-2"></i>Trading Not Recommended'}
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <h5>Market Metrics</h5>
+                                            <ul class="list-group">
+                                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                    Current Price
+                                                    <span class="badge bg-primary rounded-pill">${data.current_price}</span>
+                                                </li>
+                                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                    24h Volume
+                                                    <span class="badge bg-primary rounded-pill">${data.volume_24h}</span>
+                                                </li>
+                                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                    Price Change (24h)
+                                                    <span class="badge ${data.price_change_24h >= 0 ? 'bg-success' : 'bg-danger'} rounded-pill">
+                                                        ${data.price_change_24h.toFixed(2)}%
+                                                    </span>
+                                                </li>
+                                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                    Volatility
+                                                    <span class="badge ${data.volatility < 15 ? 'bg-success' : data.volatility < 25 ? 'bg-warning' : 'bg-danger'} rounded-pill">
+                                                        ${data.volatility.toFixed(2)}%
+                                                    </span>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <h5>Technical Indicators</h5>
+                                            <ul class="list-group">
+                                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                    Trend Direction
+                                                    <span class="badge ${data.trend.direction === 'up' ? 'bg-success' : data.trend.direction === 'down' ? 'bg-danger' : 'bg-secondary'} rounded-pill">
+                                                        ${data.trend.direction.toUpperCase()}
+                                                    </span>
+                                                </li>
+                                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                    Trend Strength
+                                                    <span class="badge bg-info rounded-pill">${(data.trend.strength * 100).toFixed(0)}%</span>
+                                                </li>
+                                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                    RSI
+                                                    <span class="badge ${data.rsi > 70 ? 'bg-danger' : data.rsi < 30 ? 'bg-success' : 'bg-secondary'} rounded-pill">
+                                                        ${data.rsi ? data.rsi.toFixed(2) : 'N/A'}
+                                                    </span>
+                                                </li>
+                                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                    MACD Histogram
+                                                    <span class="badge ${data.macd.histogram > 0 ? 'bg-success' : 'bg-danger'} rounded-pill">
+                                                        ${data.macd.histogram ? data.macd.histogram.toFixed(4) : 'N/A'}
+                                                    </span>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mt-3">
+                                        <h5>Analysis</h5>
+                                        <div class="alert alert-secondary">
+                                            ${data.reasoning || 'No detailed analysis available.'}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        
+                        modalBody.innerHTML = html;
+                    } else {
+                        document.getElementById('marketAnalysisModalBody').innerHTML = `
+                            <div class="alert alert-danger">
+                                Error analyzing market: ${data.error}
+                            </div>
+                        `;
+                    }
+                })
+                .catch(error => {
+                    document.getElementById('marketAnalysisModalBody').innerHTML = `
+                        <div class="alert alert-danger">
+                            Error: ${error.message}
+                        </div>
+                    `;
+                });
+        });
+        
+        // Optimize parameters button
+        document.getElementById('optimize-parameters-btn').addEventListener('click', function() {
+            const pairId = this.getAttribute('data-pair-id');
+            const modal = new bootstrap.Modal(document.getElementById('optimizeParametersModal'));
+            modal.show();
+            
+            // Make API request
+            fetch(`/api/trader/optimize/${pairId}`, {
+                method: 'POST',
+            })
+                .then(response => response.json())
+                .then(data => {
+                    const modalBody = document.getElementById('optimizeParametersModalBody');
+                    
+                    if (data.success) {
+                        // Format the result into HTML
+                        let html = `
+                            <div class="alert alert-success">
+                                <h5><i class="fas fa-check-circle me-2"></i>Optimization Successful</h5>
+                                <p>Parameters have been optimized using ${data.optimization_type} approach.</p>
+                            </div>
+                            
+                            <div class="card mb-3">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Parameter Changes</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <h6>Previous Configuration</h6>
+                                            <ul class="list-group">
+                                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                    Profit Margin
+                                                    <span class="badge bg-secondary rounded-pill">${data.previous_config.profit_margin}%</span>
+                                                </li>
+                                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                    Trade Size
+                                                    <span class="badge bg-secondary rounded-pill">${data.previous_config.trade_size}</span>
+                                                </li>
+                                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                    Max Open Time
+                                                    <span class="badge bg-secondary rounded-pill">${data.previous_config.max_open_time} hours</span>
+                                                </li>
+                                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                    Stop Loss
+                                                    <span class="badge bg-secondary rounded-pill">${data.previous_config.stop_loss ? data.previous_config.stop_loss + '%' : 'None'}</span>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <h6>New Configuration</h6>
+                                            <ul class="list-group">
+                                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                    Profit Margin
+                                                    <span class="badge ${data.new_config.profit_margin > data.previous_config.profit_margin ? 'bg-success' : data.new_config.profit_margin < data.previous_config.profit_margin ? 'bg-danger' : 'bg-secondary'} rounded-pill">
+                                                        ${data.new_config.profit_margin}%
+                                                    </span>
+                                                </li>
+                                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                    Trade Size
+                                                    <span class="badge ${data.new_config.trade_size > data.previous_config.trade_size ? 'bg-success' : data.new_config.trade_size < data.previous_config.trade_size ? 'bg-danger' : 'bg-secondary'} rounded-pill">
+                                                        ${data.new_config.trade_size}
+                                                    </span>
+                                                </li>
+                                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                    Max Open Time
+                                                    <span class="badge ${data.new_config.max_open_time > data.previous_config.max_open_time ? 'bg-success' : data.new_config.max_open_time < data.previous_config.max_open_time ? 'bg-danger' : 'bg-secondary'} rounded-pill">
+                                                        ${data.new_config.max_open_time} hours
+                                                    </span>
+                                                </li>
+                                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                    Stop Loss
+                                                    <span class="badge ${data.new_config.stop_loss && !data.previous_config.stop_loss ? 'bg-success' : !data.new_config.stop_loss && data.previous_config.stop_loss ? 'bg-danger' : 'bg-secondary'} rounded-pill">
+                                                        ${data.new_config.stop_loss ? data.new_config.stop_loss + '%' : 'None'}
+                                                    </span>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mt-3">
+                                        <h5>Reasoning</h5>
+                                        <div class="alert alert-secondary">
+                                            ${data.reasoning || 'No reasoning provided.'}
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mt-3">
+                                        <h5>Expected Improvement</h5>
+                                        <div class="alert alert-info">
+                                            ${data.expected_improvement || 'No improvement details provided.'}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        
+                        modalBody.innerHTML = html;
+                    } else {
+                        modalBody.innerHTML = `
+                            <div class="alert alert-danger">
+                                <h5><i class="fas fa-exclamation-circle me-2"></i>Optimization Failed</h5>
+                                <p>Error: ${data.error}</p>
+                            </div>
+                        `;
+                    }
+                })
+                .catch(error => {
+                    document.getElementById('optimizeParametersModalBody').innerHTML = `
+                        <div class="alert alert-danger">
+                            <h5><i class="fas fa-exclamation-circle me-2"></i>Optimization Failed</h5>
+                            <p>Error: ${error.message}</p>
+                        </div>
+                    `;
+                });
+        });
+        
+        // Check trader health button
+        document.getElementById('check-trader-btn').addEventListener('click', function() {
+            const pairId = this.getAttribute('data-pair-id');
+            const modal = new bootstrap.Modal(document.getElementById('checkTraderModal'));
+            modal.show();
+            
+            // Make API request
+            fetch(`/api/trader/monitor/${pairId}`)
+                .then(response => response.json())
+                .then(data => {
+                    const modalBody = document.getElementById('checkTraderModalBody');
+                    
+                    if (data.success) {
+                        // Format the result into HTML
+                        let html = `
+                            <div class="alert ${data.issues_detected ? 'alert-warning' : 'alert-success'}">
+                                <h5>
+                                    <i class="fas ${data.issues_detected ? 'fa-exclamation-triangle' : 'fa-check-circle'} me-2"></i>
+                                    ${data.issues_detected ? 'Issues Detected' : 'No Issues Detected'}
+                                </h5>
+                                <p>${data.issue_summary}</p>
+                            </div>
+                        `;
+                        
+                        if (data.issues_detected) {
+                            html += `
+                                <div class="card mb-3">
+                                    <div class="card-header">
+                                        <h5 class="mb-0">Detailed Analysis</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        ${data.llm_analysis?.detailed_analysis || 'No detailed analysis available.'}
+                                    </div>
+                                </div>
+                                
+                                <div class="card mb-3">
+                                    <div class="card-header">
+                                        <h5 class="mb-0">Recommended Actions</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <ul class="list-group">
+                            `;
+                            
+                            data.recommended_actions.forEach(action => {
+                                let actionText = '';
+                                let actionClass = '';
+                                
+                                if (action === 'check_market_conditions') {
+                                    actionText = 'Check market conditions';
+                                    actionClass = 'bg-info';
+                                } else if (action === 'review_trading_parameters') {
+                                    actionText = 'Review trading parameters';
+                                    actionClass = 'bg-warning';
+                                } else if (action === 'optimize_parameters') {
+                                    actionText = 'Optimize parameters';
+                                    actionClass = 'bg-success';
+                                } else if (action === 'consider_manual_trade') {
+                                    actionText = 'Consider placing a manual trade';
+                                    actionClass = 'bg-primary';
+                                } else {
+                                    actionText = action.replace(/_/g, ' ');
+                                    actionClass = 'bg-secondary';
+                                }
+                                
+                                html += `
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        ${actionText}
+                                        <span class="badge ${actionClass} rounded-pill">Recommended</span>
+                                    </li>
+                                `;
+                            });
+                            
+                            html += `
+                                        </ul>
+                                    </div>
+                                </div>
+                                
+                                <div class="card mb-3">
+                                    <div class="card-header">
+                                        <h5 class="mb-0">Trader Metrics</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <ul class="list-group">
+                                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                        Open Trades
+                                                        <span class="badge bg-primary rounded-pill">${data.metrics.open_trades} / ${data.metrics.max_concurrent_trades}</span>
+                                                    </li>
+                                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                        Success Rate
+                                                        <span class="badge ${data.metrics.success_rate > 50 ? 'bg-success' : 'bg-danger'} rounded-pill">
+                                                            ${data.metrics.success_rate.toFixed(1)}%
+                                                        </span>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <ul class="list-group">
+                                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                        Avg. Profit/Loss
+                                                        <span class="badge ${data.metrics.avg_profit_loss > 0 ? 'bg-success' : 'bg-danger'} rounded-pill">
+                                                            ${data.metrics.avg_profit_loss.toFixed(2)}%
+                                                        </span>
+                                                    </li>
+                                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                        Avg. Trade Duration
+                                                        <span class="badge bg-info rounded-pill">
+                                                            ${data.metrics.avg_duration.toFixed(1)} hours
+                                                        </span>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="alert alert-${data.severity === 'high' ? 'danger' : data.severity === 'medium' ? 'warning' : 'info'}">
+                                    <i class="fas fa-exclamation-circle me-2"></i>
+                                    Issue Severity: <strong>${data.severity.toUpperCase()}</strong>
+                                </div>
+                            `;
+                        } else {
+                            html += `
+                                <div class="card mb-3">
+                                    <div class="card-header">
+                                        <h5 class="mb-0">Trader Metrics</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <ul class="list-group">
+                                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                        Open Trades
+                                                        <span class="badge bg-primary rounded-pill">${data.metrics.open_trades} / ${data.metrics.max_concurrent_trades}</span>
+                                                    </li>
+                                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                        Success Rate
+                                                        <span class="badge ${data.metrics.success_rate > 50 ? 'bg-success' : 'bg-danger'} rounded-pill">
+                                                            ${data.metrics.success_rate.toFixed(1)}%
+                                                        </span>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <ul class="list-group">
+                                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                        Avg. Profit/Loss
+                                                        <span class="badge ${data.metrics.avg_profit_loss > 0 ? 'bg-success' : 'bg-danger'} rounded-pill">
+                                                            ${data.metrics.avg_profit_loss.toFixed(2)}%
+                                                        </span>
+                                                    </li>
+                                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                        Avg. Trade Duration
+                                                        <span class="badge bg-info rounded-pill">
+                                                            ${data.metrics.avg_duration.toFixed(1)} hours
+                                                        </span>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                        
+                        modalBody.innerHTML = html;
+                    } else {
+                        modalBody.innerHTML = `
+                            <div class="alert alert-danger">
+                                <h5><i class="fas fa-exclamation-circle me-2"></i>Check Failed</h5>
+                                <p>Error: ${data.error}</p>
+                            </div>
+                        `;
+                    }
+                })
+                .catch(error => {
+                    document.getElementById('checkTraderModalBody').innerHTML = `
+                        <div class="alert alert-danger">
+                            <h5><i class="fas fa-exclamation-circle me-2"></i>Check Failed</h5>
+                            <p>Error: ${error.message}</p>
+                        </div>
+                    `;
+                });
+        });
+        
+        // Place trade button
+        document.getElementById('place-trade-btn').addEventListener('click', function() {
+            const pairId = this.getAttribute('data-pair-id');
+            const pair = "{{ pair.pair_name }}";
+            const modal = new bootstrap.Modal(document.getElementById('placeTradeModal'));
+            
+            // Reset modal
+            document.getElementById('placeTradeAlert').style.display = 'block';
+            document.getElementById('marketConditionsInfo').style.display = 'none';
+            document.getElementById('placeTradeBtns').style.display = 'none';
+            document.getElementById('placingTradeInfo').style.display = 'none';
+            document.getElementById('placeTradeResult').style.display = 'none';
+            
+            // Show modal
+            modal.show();
+            
+            // Check market conditions first
+            fetch(`/api/market/analyze?symbol=${pair}`)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('placeTradeAlert').style.display = 'none';
+                    
+                    if (data.success) {
+                        const marketInfo = document.getElementById('marketConditionsInfo');
+                        
+                        // Format the market conditions
+                        let html = `
+                            <div class="alert ${data.trading_recommended ? 'alert-success' : 'alert-warning'}">
+                                <h5>
+                                    <i class="fas ${data.trading_recommended ? 'fa-check-circle' : 'fa-exclamation-triangle'} me-2"></i>
+                                    ${data.trading_recommended ? 'Trading is Recommended' : 'Trading is Not Recommended'}
+                                </h5>
+                                <p>Current Price: ${data.current_price}</p>
+                                <p>Market Trend: ${data.trend.direction.toUpperCase()} (${(data.trend.strength * 100).toFixed(0)}% strength)</p>
+                                <p>Volatility: ${data.volatility.toFixed(2)}%</p>
+                                <p><strong>Analysis:</strong> ${data.reasoning}</p>
+                            </div>
+                        `;
+                        
+                        marketInfo.innerHTML = html;
+                        marketInfo.style.display = 'block';
+                        
+                        // Show trade placement button
+                        document.getElementById('placeTradeBtns').style.display = 'block';
+                        
+                        // Set up confirm button - only enable if trading is recommended or user overrides
+                        const confirmBtn = document.getElementById('confirmPlaceTrade');
+                        
+                        if (!data.trading_recommended) {
+                            confirmBtn.className = 'btn btn-warning';
+                            confirmBtn.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>Place Trade Despite Warning';
+                        }
+                        
+                        // Handle confirm button click
+                        confirmBtn.onclick = function() {
+                            // Hide previous elements
+                            document.getElementById('marketConditionsInfo').style.display = 'none';
+                            document.getElementById('placeTradeBtns').style.display = 'none';
+                            document.getElementById('placingTradeInfo').style.display = 'block';
+                            
+                            // Place the trade
+                            fetch(`/api/trader/place-trade/${pairId}`, {
+                                method: 'POST',
+                            })
+                                .then(response => response.json())
+                                .then(result => {
+                                    document.getElementById('placingTradeInfo').style.display = 'none';
+                                    const resultDiv = document.getElementById('placeTradeResult');
+                                    
+                                    if (result.success) {
+                                        resultDiv.innerHTML = `
+                                            <div class="alert alert-success">
+                                                <h5><i class="fas fa-check-circle me-2"></i>Trade Placed Successfully</h5>
+                                                <p>Entry Price: ${result.trade_data.entry_price}</p>
+                                                <p>Target Price: ${result.trade_data.target_price}</p>
+                                                <p>Size: ${result.trade_data.size}</p>
+                                                <p>AI Recommended: ${result.trade_data.ai_recommended ? 'Yes' : 'No'}</p>
+                                            </div>
+                                        `;
+                                    } else {
+                                        resultDiv.innerHTML = `
+                                            <div class="alert alert-danger">
+                                                <h5><i class="fas fa-times-circle me-2"></i>Failed to Place Trade</h5>
+                                                <p>Error: ${result.error}</p>
+                                            </div>
+                                        `;
+                                    }
+                                    
+                                    resultDiv.style.display = 'block';
+                                })
+                                .catch(error => {
+                                    document.getElementById('placingTradeInfo').style.display = 'none';
+                                    const resultDiv = document.getElementById('placeTradeResult');
+                                    
+                                    resultDiv.innerHTML = `
+                                        <div class="alert alert-danger">
+                                            <h5><i class="fas fa-times-circle me-2"></i>Error</h5>
+                                            <p>Error: ${error.message}</p>
+                                        </div>
+                                    `;
+                                    
+                                    resultDiv.style.display = 'block';
+                                });
+                        };
+                    } else {
+                        document.getElementById('marketConditionsInfo').innerHTML = `
+                            <div class="alert alert-danger">
+                                <h5><i class="fas fa-exclamation-circle me-2"></i>Error Analyzing Market</h5>
+                                <p>Error: ${data.error}</p>
+                            </div>
+                        `;
+                        document.getElementById('marketConditionsInfo').style.display = 'block';
+                    }
+                })
+                .catch(error => {
+                    document.getElementById('placeTradeAlert').style.display = 'none';
+                    document.getElementById('marketConditionsInfo').innerHTML = `
+                        <div class="alert alert-danger">
+                            <h5><i class="fas fa-exclamation-circle me-2"></i>Error Analyzing Market</h5>
+                            <p>Error: ${error.message}</p>
+                        </div>
+                    `;
+                    document.getElementById('marketConditionsInfo').style.display = 'block';
+                });
+        });
+        
+        // Cancel trade buttons
+        document.querySelectorAll('.cancel-trade-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const tradeId = this.getAttribute('data-trade-id');
+                const row = this.closest('tr');
+                
+                if (confirm('Are you sure you want to cancel this trade?')) {
+                    // Show loading state
+                    button.disabled = true;
+                    button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Cancelling...';
+                    
+                    // Make API request to cancel trade
+                    fetch(`/api/trader/trades/${tradeId}/cancel`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ reason: 'Manually cancelled by user' }),
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                // Update the UI
+                                alert('Trade cancelled successfully');
+                                row.remove();
+                            } else {
+                                alert(`Error cancelling trade: ${data.error}`);
+                                // Reset button
+                                button.disabled = false;
+                                button.innerHTML = '<i class="fas fa-times me-1"></i>Cancel';
+                            }
+                        })
+                        .catch(error => {
+                            alert(`Error: ${error.message}`);
+                            // Reset button
+                            button.disabled = false;
+                            button.innerHTML = '<i class="fas fa-times me-1"></i>Cancel';
+                        });
+                }
+            });
+        });
+    }
+</script>
+{% endblock %}

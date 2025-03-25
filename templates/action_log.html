@@ -1,0 +1,536 @@
+{% extends 'base.html' %}
+
+{% block title %}Crypto AI Agent - Action Log{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="mb-0"><i class="fas fa-history me-2"></i>AI Agent Action Log</h4>
+                <div class="btn-group">
+                    <button type="button" class="btn btn-sm btn-outline-primary filter-btn" data-filter="all">All Actions</button>
+                    <button type="button" class="btn btn-sm btn-outline-info filter-btn" data-filter="market_analysis">Market Analysis</button>
+                    <button type="button" class="btn btn-sm btn-outline-success filter-btn" data-filter="parameter_optimization">Parameter Optimization</button>
+                    <button type="button" class="btn btn-sm btn-outline-warning filter-btn" data-filter="trader_monitoring">Trader Monitoring</button>
+                    <button type="button" class="btn btn-sm btn-outline-primary filter-btn" data-filter="trade_placement">Trade Placement</button>
+                </div>
+            </div>
+            <div class="card-body">
+                <p class="lead">Complete history of actions taken by the AI agent. This log helps you understand the AI's decision-making process and track its activities over time.</p>
+                
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Action Type</th>
+                                <th>Description</th>
+                                <th>Related Pair</th>
+                                <th>Related Trade</th>
+                            </tr>
+                        </thead>
+                        <tbody id="action-log-table-body">
+                            {% for action in actions %}
+                            <tr class="action-row" data-action-type="{{ action.action_type }}">
+                                <td>{{ action.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                <td>
+                                    {% if 'market_analysis' in action.action_type %}
+                                    <span class="badge bg-info">Market Analysis</span>
+                                    {% elif 'parameter_optimization' in action.action_type %}
+                                    <span class="badge bg-success">Parameter Optimization</span>
+                                    {% elif 'trader_monitoring' in action.action_type %}
+                                    <span class="badge bg-warning">Trader Monitoring</span>
+                                    {% elif 'trade_placement' in action.action_type %}
+                                    <span class="badge bg-primary">Trade Placement</span>
+                                    {% elif 'chat_query' in action.action_type %}
+                                    <span class="badge bg-secondary">Chat Query</span>
+                                    {% else %}
+                                    <span class="badge bg-dark">{{ action.action_type }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ action.description }}</td>
+                                <td>
+                                    {% if action.trading_pair_id %}
+                                    <a href="{{ url_for('main.trader_detail', pair_id=action.trading_pair_id) }}" class="btn btn-sm btn-outline-primary">
+                                        View Pair
+                                    </a>
+                                    {% else %}
+                                    -
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if action.trade_id %}
+                                    <button class="btn btn-sm btn-outline-info view-trade-btn" data-trade-id="{{ action.trade_id }}">
+                                        View Trade
+                                    </button>
+                                    {% else %}
+                                    -
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center">No actions recorded yet</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Pagination -->
+                {% if pagination.pages > 1 %}
+                <nav aria-label="Action log pagination">
+                    <ul class="pagination justify-content-center">
+                        <li class="page-item {{ 'disabled' if pagination.page == 1 else '' }}">
+                            <a class="page-link" href="{{ url_for('main.action_log', page=pagination.page-1) if pagination.page > 1 else '#' }}" aria-label="Previous">
+                                <span aria-hidden="true">&laquo;</span>
+                            </a>
+                        </li>
+                        
+                        {% for page_num in range(1, pagination.pages + 1) %}
+                            {% if page_num == pagination.page %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ page_num }}</span>
+                            </li>
+                            {% else %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('main.action_log', page=page_num) }}">{{ page_num }}</a>
+                            </li>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        <li class="page-item {{ 'disabled' if pagination.page == pagination.pages else '' }}">
+                            <a class="page-link" href="{{ url_for('main.action_log', page=pagination.page+1) if pagination.page < pagination.pages else '#' }}" aria-label="Next">
+                                <span aria-hidden="true">&raquo;</span>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-chart-pie me-2"></i>Action Type Distribution</h5>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="action-type-chart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-calendar-alt me-2"></i>Actions Timeline</h5>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="actions-timeline-chart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Trade Details Modal -->
+<div class="modal fade" id="tradeDetailsModal" tabindex="-1" aria-labelledby="tradeDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="tradeDetailsModalLabel">Trade Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="tradeDetailsModalBody">
+                <div class="text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Loading trade details...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/chart_utils.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize action log page
+    initActionLogPage();
+    
+    // Setup event listeners
+    setupEventListeners();
+});
+
+function initActionLogPage() {
+    // Create charts
+    createActionTypeChart();
+    createActionsTimelineChart();
+}
+
+function setupEventListeners() {
+    // Action type filter buttons
+    document.querySelectorAll('.filter-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const filter = this.getAttribute('data-filter');
+            
+            // Update active state on buttons
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            this.classList.add('active');
+            
+            // Filter the table rows
+            const rows = document.querySelectorAll('#action-log-table-body tr.action-row');
+            
+            rows.forEach(row => {
+                if (filter === 'all' || row.getAttribute('data-action-type').includes(filter)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        });
+    });
+    
+    // View trade buttons
+    document.querySelectorAll('.view-trade-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const tradeId = this.getAttribute('data-trade-id');
+            showTradeDetailsModal(tradeId);
+        });
+    });
+}
+
+function createActionTypeChart() {
+    const actions = {{ actions|tojson }};
+    
+    if (!actions || actions.length === 0) return;
+    
+    // Count action types
+    const actionCounts = {
+        'market_analysis': 0,
+        'parameter_optimization': 0,
+        'trader_monitoring': 0,
+        'trade_placement': 0,
+        'chat_query': 0,
+        'other': 0
+    };
+    
+    actions.forEach(action => {
+        let found = false;
+        
+        for (const key in actionCounts) {
+            if (key !== 'other' && action.action_type.includes(key)) {
+                actionCounts[key]++;
+                found = true;
+                break;
+            }
+        }
+        
+        if (!found) {
+            actionCounts.other++;
+        }
+    });
+    
+    // Create the chart
+    const ctx = document.getElementById('action-type-chart').getContext('2d');
+    new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: [
+                'Market Analysis', 
+                'Parameter Optimization', 
+                'Trader Monitoring', 
+                'Trade Placement', 
+                'Chat Queries', 
+                'Other'
+            ],
+            datasets: [{
+                data: [
+                    actionCounts.market_analysis,
+                    actionCounts.parameter_optimization,
+                    actionCounts.trader_monitoring,
+                    actionCounts.trade_placement,
+                    actionCounts.chat_query,
+                    actionCounts.other
+                ],
+                backgroundColor: [
+                    chartColors.info,
+                    chartColors.success,
+                    chartColors.warning,
+                    chartColors.primary,
+                    chartColors.secondary,
+                    chartColors.danger
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            ...defaultChartOptions,
+            plugins: {
+                ...defaultChartOptions.plugins,
+                legend: {
+                    ...defaultChartOptions.plugins.legend,
+                    position: 'right'
+                }
+            }
+        }
+    });
+}
+
+function createActionsTimelineChart() {
+    const actions = {{ actions|tojson }};
+    
+    if (!actions || actions.length === 0) return;
+    
+    // Group actions by day
+    const actionsByDay = {};
+    const actionTypesByDay = {
+        'market_analysis': {},
+        'parameter_optimization': {},
+        'trader_monitoring': {},
+        'trade_placement': {},
+        'other': {}
+    };
+    
+    actions.forEach(action => {
+        const date = action.timestamp.split(' ')[0];
+        
+        // Initialize counts for the day
+        if (!actionsByDay[date]) {
+            actionsByDay[date] = 0;
+            
+            for (const key in actionTypesByDay) {
+                actionTypesByDay[key][date] = 0;
+            }
+        }
+        
+        // Increment total count
+        actionsByDay[date]++;
+        
+        // Increment type-specific count
+        let found = false;
+        for (const key in actionTypesByDay) {
+            if (key !== 'other' && action.action_type.includes(key)) {
+                actionTypesByDay[key][date]++;
+                found = true;
+                break;
+            }
+        }
+        
+        if (!found) {
+            actionTypesByDay.other[date]++;
+        }
+    });
+    
+    // Sort dates and prepare data for chart
+    const sortedDates = Object.keys(actionsByDay).sort();
+    const datasets = [
+        {
+            label: 'Market Analysis',
+            data: sortedDates.map(date => actionTypesByDay.market_analysis[date] || 0),
+            backgroundColor: chartColors.info,
+            borderColor: chartColors.info.replace('0.8', '1'),
+            borderWidth: 1
+        },
+        {
+            label: 'Parameter Optimization',
+            data: sortedDates.map(date => actionTypesByDay.parameter_optimization[date] || 0),
+            backgroundColor: chartColors.success,
+            borderColor: chartColors.success.replace('0.8', '1'),
+            borderWidth: 1
+        },
+        {
+            label: 'Trader Monitoring',
+            data: sortedDates.map(date => actionTypesByDay.trader_monitoring[date] || 0),
+            backgroundColor: chartColors.warning,
+            borderColor: chartColors.warning.replace('0.8', '1'),
+            borderWidth: 1
+        },
+        {
+            label: 'Trade Placement',
+            data: sortedDates.map(date => actionTypesByDay.trade_placement[date] || 0),
+            backgroundColor: chartColors.primary,
+            borderColor: chartColors.primary.replace('0.8', '1'),
+            borderWidth: 1
+        },
+        {
+            label: 'Other',
+            data: sortedDates.map(date => actionTypesByDay.other[date] || 0),
+            backgroundColor: chartColors.secondary,
+            borderColor: chartColors.secondary.replace('0.8', '1'),
+            borderWidth: 1
+        }
+    ];
+    
+    // Create the chart
+    const ctx = document.getElementById('actions-timeline-chart').getContext('2d');
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: sortedDates,
+            datasets: datasets
+        },
+        options: {
+            ...defaultChartOptions,
+            plugins: {
+                ...defaultChartOptions.plugins,
+                tooltip: {
+                    ...defaultChartOptions.plugins.tooltip,
+                    callbacks: {
+                        afterTitle: function(context) {
+                            const idx = context[0].dataIndex;
+                            const date = sortedDates[idx];
+                            const total = actionsByDay[date];
+                            return `Total actions: ${total}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                ...defaultChartOptions.scales,
+                x: {
+                    ...defaultChartOptions.scales.x,
+                    stacked: true
+                },
+                y: {
+                    ...defaultChartOptions.scales.y,
+                    stacked: true,
+                    title: {
+                        display: true,
+                        text: 'Number of Actions',
+                        color: '#aaaaaa'
+                    }
+                }
+            }
+        }
+    });
+}
+
+function showTradeDetailsModal(tradeId) {
+    // Get and show the modal
+    const modal = new bootstrap.Modal(document.getElementById('tradeDetailsModal'));
+    
+    // Show the modal
+    modal.show();
+    
+    // Make API request to get trade details
+    fetch(`/api/trades/${tradeId}`)
+        .then(response => response.json())
+        .then(data => {
+            const modalBody = document.getElementById('tradeDetailsModalBody');
+            
+            if (data.success) {
+                const trade = data.data;
+                
+                // Format the trade details
+                let html = `
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0">Trade #${trade.id} - ${trade.trading_pair.pair_name}</h6>
+                        </div>
+                        <div class="card-body p-0">
+                            <ul class="list-group list-group-flush">
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span>Status</span>
+                                    <span class="badge ${trade.status === 'open' ? 'bg-success' : trade.status === 'closed' ? 'bg-primary' : 'bg-secondary'}">
+                                        ${trade.status.toUpperCase()}
+                                    </span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span>Entry Price</span>
+                                    <span>${trade.entry_price}</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span>Target Price</span>
+                                    <span>${trade.target_price}</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span>Size</span>
+                                    <span>${trade.size}</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span>Opened At</span>
+                                    <span>${trade.opened_at.replace('T', ' ').replace('Z', '')}</span>
+                                </li>
+                `;
+                
+                if (trade.status !== 'open') {
+                    html += `
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span>Closed At</span>
+                                    <span>${trade.closed_at.replace('T', ' ').replace('Z', '')}</span>
+                                </li>
+                    `;
+                }
+                
+                if (trade.status === 'closed') {
+                    html += `
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span>Profit/Loss</span>
+                                    <span class="badge ${trade.profit_loss > 0 ? 'bg-success' : 'bg-danger'}">
+                                        ${trade.profit_loss > 0 ? '+' : ''}${trade.profit_loss.toFixed(2)}%
+                                    </span>
+                                </li>
+                    `;
+                }
+                
+                html += `
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span>AI Recommended</span>
+                                    <span class="badge ${trade.ai_recommended ? 'bg-success' : 'bg-secondary'}">
+                                        ${trade.ai_recommended ? 'Yes' : 'No'}
+                                    </span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                `;
+                
+                if (trade.recommendation_reason) {
+                    html += `
+                        <div class="mt-3">
+                            <h6>AI Recommendation Reason:</h6>
+                            <div class="alert alert-info">
+                                ${trade.recommendation_reason}
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                modalBody.innerHTML = html;
+            } else {
+                modalBody.innerHTML = `
+                    <div class="alert alert-danger">
+                        <h5><i class="fas fa-exclamation-circle me-2"></i>Error Loading Trade</h5>
+                        <p>${data.error || 'Could not load trade details'}</p>
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            document.getElementById('tradeDetailsModalBody').innerHTML = `
+                <div class="alert alert-danger">
+                    <h5><i class="fas fa-exclamation-circle me-2"></i>Error</h5>
+                    <p>${error.message}</p>
+                </div>
+            `;
+        });
+}
+</script>
+{% endblock %}
