@@ -51,6 +51,15 @@
         </div>
     </nav>
 
+    <!-- API Status notification (hidden by default) -->
+    <div id="api-status-alert" class="alert alert-warning alert-dismissible fade show" role="alert" style="display: none;">
+        <div class="d-flex align-items-center">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <span>Trading API is currently unavailable. Some features may be limited.</span>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+
     <!-- Main content -->
     <div class="container-fluid mt-4">
         {% block content %}{% endblock %}

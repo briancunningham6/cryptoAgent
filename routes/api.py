@@ -239,3 +239,22 @@ def get_recent_actions():
     except Exception as e:
         logger.error(f"Error getting recent actions: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500
+
+@api_bp.route('/status/check-api', methods=['GET'])
+def check_api_status():
+    """Check if the Trading API is available"""
+    try:
+        # Use the API availability flag from our client
+        return jsonify({
+            "success": True,
+            "api_available": trading_client.api_available,
+            "timestamp": datetime.utcnow().isoformat()
+        })
+    except Exception as e:
+        logger.error(f"Error checking API status: {str(e)}")
+        return jsonify({
+            "success": False,
+            "api_available": False,
+            "error": str(e),
+            "timestamp": datetime.utcnow().isoformat()
+        })

@@ -87,6 +87,40 @@ async function apiRequest(url, options = {}) {
     }
 }
 
+// Check the status of the Trading API
+function checkTradingApiStatus() {
+    // Try to make a lightweight API call to check status
+    fetch('/api/status/check-api', { 
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        // Short timeout to prevent blocking the UI
+        signal: AbortSignal.timeout(2000)
+    })
+    .then(response => response.json())
+    .then(data => {
+        const alertElement = document.getElementById('api-status-alert');
+        if (alertElement) {
+            if (data.api_available === false) {
+                // Show the alert if API is not available
+                alertElement.style.display = 'block';
+            } else {
+                // Hide the alert if API is available
+                alertElement.style.display = 'none';
+            }
+        }
+    })
+    .catch(error => {
+        // If there's an error with the status check, assume API is down
+        console.error('API status check failed:', error);
+        const alertElement = document.getElementById('api-status-alert');
+        if (alertElement) {
+            alertElement.style.display = 'block';
+        }
+    });
+}
+
 // Setup common tooltips and popovers
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize tooltips
@@ -111,6 +145,12 @@ document.addEventListener('DOMContentLoaded', function() {
             link.classList.add('active');
         }
     });
+    
+    // Check API status when page loads
+    checkTradingApiStatus();
+    
+    // Periodically check API status
+    setInterval(checkTradingApiStatus, 30000); // Check every 30 seconds
 });
 
 // Auto refresh functionality
