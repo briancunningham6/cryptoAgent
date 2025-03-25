@@ -35,22 +35,19 @@ cd cryptoAgent
 ```
 
 2. Install dependencies
-There are three ways to install dependencies:
+There are a few ways to install dependencies:
 
-Option 1: Using the standard requirements.txt file:
-```bash
-pip install -r requirements.txt
-```
-
-Option 2: Using the dependencies.txt file (identical content to requirements.txt):
+Option 1: Using the dependencies.txt file (recommended, especially for macOS users):
 ```bash
 pip install -r dependencies.txt
 ```
 
-Option 3: Install each package individually:
+Option 2 (alternative): Install packages individually with compatible versions:
 ```bash
-pip install apscheduler email-validator flask flask-sqlalchemy gunicorn matplotlib numpy openai pandas psycopg2-binary python-dotenv requests scikit-learn sqlalchemy
+pip install apscheduler==3.10.1 email-validator==2.0.0 flask==2.3.3 flask-sqlalchemy==3.0.5 gunicorn==21.2.0 matplotlib==3.7.2 numpy==1.25.2 openai==1.3.7 pandas==2.0.3 psycopg2-binary==2.9.7 python-dotenv==1.0.0 requests==2.31.0 scikit-learn==1.3.0 sqlalchemy==2.0.20
 ```
+
+> **Note for macOS users:** If you encounter errors with specific package versions, use the dependencies.txt file which contains versions that are compatible with macOS.
 
 3. Configure environment variables
 ```bash
