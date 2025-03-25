@@ -30,13 +30,26 @@ An AI-powered agent to manage cryptocurrency trading operations through automate
 
 1. Clone the repository
 ```bash
-git clone https://github.com/your-username/crypto-trading-ai-agent.git
-cd crypto-trading-ai-agent
+git clone https://github.com/your-username/cryptoAgent.git
+cd cryptoAgent
 ```
 
 2. Install dependencies
+There are three ways to install dependencies:
+
+Option 1: Using the standard requirements.txt file:
 ```bash
 pip install -r requirements.txt
+```
+
+Option 2: Using the dependencies.txt file (identical content to requirements.txt):
+```bash
+pip install -r dependencies.txt
+```
+
+Option 3: Install each package individually:
+```bash
+pip install apscheduler email-validator flask flask-sqlalchemy gunicorn matplotlib numpy openai pandas psycopg2-binary python-dotenv requests scikit-learn sqlalchemy
 ```
 
 3. Configure environment variables
@@ -48,8 +61,14 @@ DATABASE_URL=postgresql://username:password@localhost/dbname
 
 4. Run the application
 ```bash
+# For development
 python main.py
+
+# For production (using gunicorn)
+gunicorn --bind 0.0.0.0:5000 main:app
 ```
+
+> **Note:** When running the application, you may see connection errors related to the trading API. This is expected behavior if you don't have a trading platform running locally. The application will still function for demonstration purposes, but some features that depend on real-time trading data will be limited.
 
 ## Architecture
 
