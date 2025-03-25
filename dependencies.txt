@@ -1,0 +1,14 @@
+apscheduler==3.10.4
+email-validator==2.1.1
+flask==3.0.3
+flask-sqlalchemy==3.1.1
+gunicorn==23.0.0
+numpy==2.2.4
+openai==1.28.1
+pandas==2.2.3
+psycopg2-binary==2.9.9
+requests==2.32.3
+scikit-learn==1.6.1
+sqlalchemy==2.0.30
+matplotlib==3.10.1
+python-dotenv==1.0.1
