@@ -2,6 +2,7 @@ import json
 import os
 import logging
 from openai import OpenAI
+from dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
 
@@ -9,7 +10,10 @@ logger = logging.getLogger(__name__)
 # do not change this unless explicitly requested by the user
 MODEL = "gpt-4o"
 
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+# Load environment variables from .env file
+load_dotenv()
+
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 openai = OpenAI(api_key=OPENAI_API_KEY)
 
 
