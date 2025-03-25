@@ -14,6 +14,12 @@ MODEL = "gpt-4o"
 load_dotenv()
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+# Check if the API key is available
+if not OPENAI_API_KEY:
+    logger.error("OPENAI_API_KEY is not set. Please set it in your environment variables or .env file.")
+    print("OPENAI_API_KEY is not set. Chat functionality will not work.")
+
 openai = OpenAI(api_key=OPENAI_API_KEY)
 
 
@@ -28,6 +34,18 @@ def generate_market_analysis(market_data):
     Returns:
         dict: Analysis results including trend, recommendation, and reasoning
     """
+    # Check if OpenAI API key is set
+    if not OPENAI_API_KEY:
+        logger.error("Cannot generate market analysis: OpenAI API key is not set.")
+        return {
+            "trend": "unknown",
+            "trend_strength": 0,
+            "volatility": 0,
+            "trading_recommended": False,
+            "reasoning": "Error: OpenAI API key is not configured. Please set the OPENAI_API_KEY environment variable.",
+            "suggested_actions": ["configure_api_key"]
+        }
+    
     try:
         # Prepare the prompt with market data
         prompt = f"""
@@ -76,12 +94,22 @@ def generate_market_analysis(market_data):
         
     except Exception as e:
         logger.error(f"Error generating market analysis: {str(e)}")
+        
+        # Handle common OpenAI API errors
+        error_str = str(e).lower()
+        error_message = f"Error analyzing market: {str(e)}"
+        
+        if "api key" in error_str or "apikey" in error_str or "authentication" in error_str:
+            error_message = "Authentication error with OpenAI API. Please check your API key."
+        elif "rate limit" in error_str or "ratelimit" in error_str:
+            error_message = "OpenAI API rate limit reached. Please try again later."
+        
         return {
             "trend": "unknown",
             "trend_strength": 0,
             "volatility": 0,
             "trading_recommended": False,
-            "reasoning": f"Error analyzing market: {str(e)}",
+            "reasoning": error_message,
             "suggested_actions": ["manual_review"]
         }
 
@@ -99,6 +127,18 @@ def optimize_trading_parameters(trading_pair, current_config, trade_history, mar
     Returns:
         dict: Optimized parameters with reasoning
     """
+    # Check if OpenAI API key is set
+    if not OPENAI_API_KEY:
+        logger.error("Cannot optimize trading parameters: OpenAI API key is not set.")
+        return {
+            "profit_margin": current_config.get('profit_margin'),
+            "trade_size": current_config.get('trade_size'),
+            "max_open_time": current_config.get('max_open_time'),
+            "stop_loss": current_config.get('stop_loss'),
+            "reasoning": "Error: OpenAI API key is not configured. Please set the OPENAI_API_KEY environment variable.",
+            "expected_improvement": "None due to missing API key"
+        }
+    
     try:
         # Prepare the prompt with current configuration and history
         prompt = f"""
@@ -147,12 +187,22 @@ def optimize_trading_parameters(trading_pair, current_config, trade_history, mar
         
     except Exception as e:
         logger.error(f"Error optimizing trading parameters: {str(e)}")
+        
+        # Handle common OpenAI API errors
+        error_str = str(e).lower()
+        error_message = f"Error optimizing parameters: {str(e)}"
+        
+        if "api key" in error_str or "apikey" in error_str or "authentication" in error_str:
+            error_message = "Authentication error with OpenAI API. Please check your API key."
+        elif "rate limit" in error_str or "ratelimit" in error_str:
+            error_message = "OpenAI API rate limit reached. Please try again later."
+        
         return {
             "profit_margin": current_config.get('profit_margin'),
             "trade_size": current_config.get('trade_size'),
             "max_open_time": current_config.get('max_open_time'),
             "stop_loss": current_config.get('stop_loss'),
-            "reasoning": f"Error optimizing parameters: {str(e)}",
+            "reasoning": error_message,
             "expected_improvement": "None due to optimization failure"
         }
 
@@ -168,6 +218,17 @@ def detect_trader_issues(trading_pair, trader_data):
     Returns:
         dict: Analysis of issues and recommended actions
     """
+    # Check if OpenAI API key is set
+    if not OPENAI_API_KEY:
+        logger.error("Cannot detect trader issues: OpenAI API key is not set.")
+        return {
+            "issues_detected": True,
+            "issue_summary": "Error: OpenAI API key is not configured",
+            "detailed_analysis": "Cannot perform analysis because the OpenAI API key is not set. Please configure the OPENAI_API_KEY environment variable.",
+            "recommended_actions": ["configure_api_key", "manual_review"],
+            "severity": "medium"
+        }
+    
     try:
         # Prepare the prompt with trader data
         prompt = f"""
@@ -213,9 +274,19 @@ def detect_trader_issues(trading_pair, trader_data):
         
     except Exception as e:
         logger.error(f"Error detecting trader issues: {str(e)}")
+        
+        # Handle common OpenAI API errors
+        error_str = str(e).lower()
+        error_message = f"Error analyzing trader: {str(e)}"
+        
+        if "api key" in error_str or "apikey" in error_str or "authentication" in error_str:
+            error_message = "Authentication error with OpenAI API. Please check your API key."
+        elif "rate limit" in error_str or "ratelimit" in error_str:
+            error_message = "OpenAI API rate limit reached. Please try again later."
+        
         return {
             "issues_detected": True,
-            "issue_summary": f"Error analyzing trader: {str(e)}",
+            "issue_summary": error_message,
             "detailed_analysis": "System error prevented proper analysis of trader issues.",
             "recommended_actions": ["manual_review"],
             "severity": "medium"
@@ -235,6 +306,12 @@ def process_user_query(query, trading_data=None, market_data=None, recent_action
     Returns:
         str: Response to the user's query
     """
+    # Check if OpenAI API key is set
+    if not OPENAI_API_KEY:
+        logger.error("Cannot process query: OpenAI API key is not set.")
+        return ("I'm sorry, I can't process your request because the OpenAI API key is not configured. "
+                "Please set the OPENAI_API_KEY environment variable or add it to your .env file to enable chat functionality.")
+    
     try:
         # Prepare system context with available data
         system_context = """
@@ -281,4 +358,15 @@ def process_user_query(query, trading_data=None, market_data=None, recent_action
         
     except Exception as e:
         logger.error(f"Error processing user query: {str(e)}")
-        return f"I'm sorry, I encountered an error while processing your query: {str(e)}. Please try again later or rephrase your question."
+        
+        # Handle common OpenAI API errors more specifically
+        error_str = str(e).lower()
+        if "api key" in error_str or "apikey" in error_str or "authentication" in error_str:
+            return ("I'm sorry, there's an issue with the OpenAI API authentication. "
+                   "Please make sure you've provided a valid OpenAI API key in your environment variables or .env file.")
+        elif "rate limit" in error_str or "ratelimit" in error_str:
+            return "I'm sorry, the OpenAI API rate limit has been reached. Please try again in a few moments."
+        elif "connection" in error_str or "timeout" in error_str:
+            return "I'm sorry, there seems to be a connection issue with the OpenAI API. Please check your internet connection and try again."
+        else:
+            return f"I'm sorry, I encountered an error while processing your query: {str(e)}. Please try again later or rephrase your question."
