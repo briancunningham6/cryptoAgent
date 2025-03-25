@@ -217,7 +217,7 @@ function setupEventListeners() {
 }
 
 function createActionTypeChart() {
-    const actions = {{ actions|tojson }};
+    const actions = {{ actions_data|tojson }};
     
     if (!actions || actions.length === 0) return;
     
@@ -294,7 +294,7 @@ function createActionTypeChart() {
 }
 
 function createActionsTimelineChart() {
-    const actions = {{ actions|tojson }};
+    const actions = {{ actions_data|tojson }};
     
     if (!actions || actions.length === 0) return;
     

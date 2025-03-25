@@ -155,10 +155,23 @@ def action_log():
             page=page, per_page=per_page, error_out=False
         )
         
+        # Convert AuditLog objects to dictionaries for JSON serialization
+        actions_data = []
+        for action in actions_pagination.items:
+            actions_data.append({
+                'id': action.id,
+                'timestamp': action.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+                'action_type': action.action_type,
+                'description': action.description,
+                'trading_pair_id': action.trading_pair_id,
+                'trade_id': action.trade_id
+            })
+        
         # Render template with data
         return render_template(
             'action_log.html',
-            actions=actions_pagination.items,
+            actions=actions_pagination.items,  # For template iteration
+            actions_data=actions_data,  # For JSON serialization
             pagination=actions_pagination
         )
     except Exception as e:
