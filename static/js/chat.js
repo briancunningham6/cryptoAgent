@@ -33,8 +33,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Show loading indicator
                 if (loadingIndicator) {
-                    loadingIndicator.style.display = 'block';
+                    loadingIndicator.style.display = 'flex';
                 }
+                
+                // Add typing indicator in the chat
+                addTypingIndicator();
                 
                 // Send message to server
                 sendMessageToAgent(message);
@@ -198,6 +201,43 @@ function formatAgentResponse(text) {
     return formattedText;
 }
 
+// Add typing indicator to the chat
+function addTypingIndicator() {
+    const chatMessages = document.getElementById('chat-messages');
+    if (!chatMessages) return;
+    
+    // Check if there's already a typing indicator
+    const existingIndicator = document.getElementById('typing-indicator');
+    if (existingIndicator) {
+        existingIndicator.remove();
+    }
+    
+    const typingElement = document.createElement('div');
+    typingElement.className = 'chat-message chat-message-agent';
+    typingElement.id = 'typing-indicator';
+    
+    typingElement.innerHTML = `
+        <div class="chat-bubble agent-bubble typing-bubble">
+            <div class="typing-indicator">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    `;
+    
+    chatMessages.appendChild(typingElement);
+    scrollChatToBottom();
+}
+
+// Remove typing indicator
+function removeTypingIndicator() {
+    const typingIndicator = document.getElementById('typing-indicator');
+    if (typingIndicator) {
+        typingIndicator.remove();
+    }
+}
+
 // Send a message to the AI agent
 function sendMessageToAgent(message) {
     // Make API request
@@ -210,11 +250,14 @@ function sendMessageToAgent(message) {
     })
     .then(response => response.json())
     .then(data => {
-        // Hide loading indicator
+        // Hide loading indicators
         const loadingIndicator = document.getElementById('chat-loading');
         if (loadingIndicator) {
             loadingIndicator.style.display = 'none';
         }
+        
+        // Remove typing indicator
+        removeTypingIndicator();
         
         if (data.success) {
             // Add agent response to chat
@@ -227,11 +270,14 @@ function sendMessageToAgent(message) {
     .catch(error => {
         console.error('Error sending message to agent:', error);
         
-        // Hide loading indicator
+        // Hide loading indicators
         const loadingIndicator = document.getElementById('chat-loading');
         if (loadingIndicator) {
             loadingIndicator.style.display = 'none';
         }
+        
+        // Remove typing indicator
+        removeTypingIndicator();
         
         // Show error message
         addMessageToChat('agent', `I'm sorry, I encountered an error while processing your request. Please try again later.`);
